@@ -6,7 +6,6 @@ services:
     volumes:
       - ./setup/setup.sh:/usr/share/elasticsearch/setup.sh
       - ./setup/instances.yml:/usr/share/elasticsearch/instances.yml
-      - ./setup/parse.py:/usr/share/elasticsearch/parse.py
       - certs:/usr/share/elasticsearch/config/certs
     user: "0"
     command: >
