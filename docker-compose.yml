@@ -1,0 +1,164 @@
+version: "2.2"
+services:
+  setup:
+    container_name: setup
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
+    volumes:
+      - ./setup/setup.sh:/usr/share/elasticsearch/setup.sh
+      - ./setup/instances.yml:/usr/share/elasticsearch/instances.yml
+      - ./setup/parse.py:/usr/share/elasticsearch/parse.py
+      - certs:/usr/share/elasticsearch/config/certs
+    user: "0"
+    command: >
+      bash -c '
+        chmod +x /usr/share/elasticsearch/setup.sh
+        /usr/share/elasticsearch/setup.sh
+      '
+    environment:
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - KIBANA_PASSWORD=${KIBANA_PASSWORD}
+      - STACK_VERSION=${STACK_VERSION}
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f config/certs/elasticsearch/elasticsearch.crt ]"]
+      interval: 1s
+      timeout: 5s
+      retries: 120
+
+  elasticsearch:
+    container_name: elasticsearch
+    depends_on:
+      setup:
+        condition: service_healthy
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
+    volumes:
+      - ./elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      - certs:/usr/share/elasticsearch/config/certs
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - ${ES_PORT}:9200
+    environment:
+      - cluster.name=${CLUSTER_NAME}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - xpack.license.self_generated.type=${LICENSE}
+    mem_limit: ${MEM_LIMIT}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s --cacert config/certs/ca/ca.crt -u elastic:${ELASTIC_PASSWORD} https://localhost:9200/_cat/health | grep -i green"
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+
+  kibana:
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    container_name: kibana
+    image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
+    volumes:
+      - ./kibana/kibana.yml:/usr/share/kibana/config/kibana.yml
+      - certs:/usr/share/kibana/config/certs
+      - kibana-data:/usr/share/kibana/data
+    ports:
+      - ${KIBANA_PORT}:5601
+    environment:
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
+      - NODE_EXTRA_CA_CERTS=/usr/share/kibana/config/certs/ca/ca.crt
+    mem_limit: ${MEM_LIMIT}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl --insecure https://localhost:5601/api/status | grep -q 'Unauthorized'",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+
+  # fleet:
+  #   container_name: fleet
+  #   image: docker.elastic.co/beats/elastic-agent:${STACK_VERSION}
+  #   ports:
+  #     - 8220:8220
+  #   user: root
+  #   depends_on:
+  #     kibana:
+  #       condition: service_healthy
+  #   environment:
+  #     - ELASTIC_AGENT_TAGS=fleet-server
+  #     - ELASTICSEARCH_HOST=https://elasticsearch:9200
+  #     - ELASTICSEARCH_USERNAME=elastic
+  #     - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+  #     - ELASTICSEARCH_CA=/etc/pki/tls/certs/ca/ca.crt
+  #     - KIBANA_HOST=https://kibana:5601
+  #     - KIBANA_USERNAME=elastic
+  #     - KIBANA_PASSWORD=${ELASTIC_PASSWORD}
+  #     - KIBANA_CA=/etc/pki/tls/certs/ca/ca.crt
+  #     - KIBANA_FLEET_SETUP=1
+  #     - KIBANA_FLEET_HOST=https://kibana:5601
+  #     - KIBANA_FLEET_USERNAME=elastic
+  #     - KIBANA_FLEET_PASSWORD=${ELASTIC_PASSWORD}
+  #     - KIBANA_FLEET_CA=/etc/pki/tls/certs/ca/ca.crt
+  #     - FLEET_SERVER_ENABLE=1
+  #     - FLEET_SERVER_ELASTICSEARCH_HOST=https://elasticsearch:9200
+  #     - FLEET_SERVER_ELASTICSEARCH_CA=/etc/pki/tls/certs/ca/ca.crt
+  #     - FLEET_SERVER_ES_CA=/etc/pki/tls/certs/ca/ca.crt
+  #     - FLEET_SERVER_POLICY_ID=fleet-server-policy
+  #     - FLEET_TOKEN_POLICY_NAME=Default
+  #     - FLEET_SERVER_HOST=0.0.0.0
+  #     - FLEET_SERVER_PORT=8220
+  #     - FLEET_SERVER_CERT=/etc/pki/tls/certs/fleet/fleet.crt
+  #     - FLEET_SERVER_CERT_KEY=/etc/pki/tls/certs/fleet/fleet.key
+  #     - FLEET_SERVER_INSECURE_HTTP=false
+  #     - FLEET_ENROLL=1
+  #     - FLEET_URL=https://fleet:8220
+  #     - FLEET_CA=/etc/pki/tls/certs/ca/ca.crt
+  #     - SSL_CERTIFICATE_AUTHORITIES=/etc/pki/tls/certs/ca/ca.crt
+  #   volumes:
+  #     - certs:/etc/pki/tls/certs
+
+  # elastic package repository, needed to install integrations in our air-gapped env
+  epr:
+    container_name: epr
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    image: docker.elastic.co/package-registry/distribution:${STACK_VERSION}
+    ports:
+      - 8443:8443
+    user: root
+    environment:
+      - EPR_ADDRESS=0.0.0.0:8443
+      - EPR_TLS_KEY=/etc/pki/tls/certs/epr/epr.key
+      - EPR_TLS_CERT=/etc/pki/tls/certs/epr/epr.crt
+    volumes:
+      - certs:/etc/pki/tls/certs
+
+  # keep in mind hosting a maps server is an enterprise license feature
+  maps:
+    container_name: maps
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    image: docker.elastic.co/elastic-maps-service/elastic-maps-server-ubi8:${STACK_VERSION}
+    user: root
+    ports:
+      - 9443:9443
+    volumes:
+      - ./maps/elastic-maps-server.yml:/usr/src/app/server/config/elastic-maps-server.yml
+      - certs:/usr/src/app/server/config/certs
+
+
+volumes:
+  certs:
+    driver: local
+  elasticsearch-data:
+    driver: local
+  kibana-data:
+    driver: local

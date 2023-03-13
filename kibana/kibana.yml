@@ -1,0 +1,46 @@
+elasticsearch.hosts: ["https://elasticsearch:9200"]
+elasticsearch.username: "kibana_system"
+elasticsearch.ssl.certificateAuthorities: config/certs/ca/ca.crt
+server.host: "0.0.0.0"
+server.name: kibana
+server.ssl.enabled: true
+server.ssl.certificate: config/certs/kibana/kibana.crt
+server.ssl.key: config/certs/kibana/kibana.key
+# air-gapped settings, disable them since they require internet
+telemetry.enabled: false
+telemetry.allowChangingOptInStatus: false
+newsfeed.enabled: false
+# disable elastic maps service since we will host our own
+map.includeElasticMapsService: false
+# this next setting should be the publicly accessible URL of the maps server b/c requests come from users' browsers
+map.emsUrl: "https://localhost:9443"
+xpack.security.encryptionKey: "abcdefghijklmnopqrstuvwxyz1234567890"
+xpack.encryptedSavedObjects.encryptionKey: "abcdefghijklmnopqrstuvwxyz1234567890"
+xpack.reporting.encryptionKey: "abcdefghijklmnopqrstuvwxyz1234567890"
+xpack.reporting.roles.enabled: false
+xpack.reporting.kibanaServer.hostname: "kibana"
+# fleet settings
+# this is your offline registry
+xpack.fleet.registryUrl: "https://epr:8443"
+xpack.fleet.packages:
+  - name: fleet_server
+    version: latest
+xpack.fleet.agentPolicies:
+  - name: Fleet Server policy
+    id: fleet-server-policy
+    data_output_id: elasticsearch-output
+    monitoring_output_id: elasticsearch-output
+    package_policies:
+      - name: fleet_server-1
+        package:
+          name: fleet_server
+xpack.fleet.outputs:
+  - name: Elasticsearch output
+    id: elasticsearch-output
+    type: elasticsearch
+    hosts: ["https://elasticsearch:9200"]
+    is_default: true
+    config:
+      ssl.certificate_authorities: ["/etc/pki/tls/certs/ca/ca.crt"]
+xpack.fleet.agents.fleet_server.hosts: ["https://fleet:8220"]
+# xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch:9200"]

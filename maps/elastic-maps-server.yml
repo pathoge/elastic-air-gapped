@@ -1,0 +1,10 @@
+host: 0.0.0.0
+port: 9443
+elasticsearch.host: https://elasticsearch:9200
+elasticsearch.username: elastic
+elasticsearch.password: abcd1234
+elasticsearch.ssl.certificateAuthorities: /usr/src/app/server/config/certs/ca/ca.crt
+ssl.enabled: true
+ssl.certificateAuthorities: /usr/src/app/server/config/certs/ca/ca.crt
+ssl.key: /usr/src/app/server/config/certs/maps/maps.key
+ssl.certificate: /usr/src/app/server/config/certs/maps/maps.crt

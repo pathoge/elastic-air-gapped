@@ -1,0 +1,31 @@
+instances:
+  - name: elasticsearch
+    dns:
+      - elasticsearch
+      - localhost
+    ip:
+      - 127.0.0.1
+  - name: kibana
+    dns:
+      - kibana
+      - localhost
+    ip:
+      - 127.0.0.1
+  - name: fleet
+    dns:
+      - fleet
+      - localhost
+    ip:
+      - 127.0.0.1
+  - name: epr
+    dns:
+      - epr
+      - localhost
+    ip:
+      - 127.0.0.1
+  - name: maps
+    dns:
+      - maps
+      - localhost
+    ip:
+      - 127.0.0.1
