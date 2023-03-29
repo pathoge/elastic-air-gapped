@@ -12,7 +12,7 @@ telemetry.allowChangingOptInStatus: false
 newsfeed.enabled: false
 # disable elastic maps service since we will host our own
 map.includeElasticMapsService: false
-# this next setting should be the publicly accessible URL of the maps server b/c requests come from users' browsers
+# note: this setting should be the publicly accessible URL of the maps server b/c requests come from users' browsers
 map.emsUrl: "https://localhost:9443"
 xpack.security.encryptionKey: "abcdefghijklmnopqrstuvwxyz1234567890"
 xpack.encryptedSavedObjects.encryptionKey: "abcdefghijklmnopqrstuvwxyz1234567890"
@@ -25,15 +25,20 @@ xpack.fleet.registryUrl: "https://epr:8443"
 xpack.fleet.packages:
   - name: fleet_server
     version: latest
+  - name: apm
+    version: latest
 xpack.fleet.agentPolicies:
-  - name: Fleet Server policy
-    id: fleet-server-policy
+  - name: Fleet and APM Server policy
+    id: fleet-apm-server-policy
     data_output_id: elasticsearch-output
     monitoring_output_id: elasticsearch-output
     package_policies:
       - name: fleet_server-1
         package:
           name: fleet_server
+      - name: apm_server-1
+        package:
+          name: apm
 xpack.fleet.outputs:
   - name: Elasticsearch output
     id: elasticsearch-output
